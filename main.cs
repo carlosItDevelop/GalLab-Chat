@@ -85,25 +85,7 @@ public class ChatHub : Hub
         }
     }
 
-    public async Task SendPublicAudio(string userName, string audioData, double duration)
-    {
-        await Clients.All.SendAsync("ReceivePublicAudio", userName, audioData, duration, DateTime.Now.ToString("HH:mm"));
-    }
-
-    public async Task SendPrivateAudio(string senderName, string receiverName, string audioData, double duration)
-    {
-        var receiverConnectionId = ConnectedUsers.FirstOrDefault(x => x.Value == receiverName).Key;
-        
-        if (!string.IsNullOrEmpty(receiverConnectionId))
-        {
-            await Clients.Client(receiverConnectionId).SendAsync("ReceivePrivateAudio", senderName, audioData, duration, DateTime.Now.ToString("HH:mm"));
-            await Clients.Caller.SendAsync("PrivateAudioSent", receiverName, audioData, duration, DateTime.Now.ToString("HH:mm"));
-        }
-        else
-        {
-            await Clients.Caller.SendAsync("UserNotFound", receiverName);
-        }
-    }
+    
 
     private async Task UpdateUsersList()
     {
