@@ -672,17 +672,21 @@
             });
 
             connection.on("ReceivePublicAudio", (userName, audioData, duration, time) => {
+                console.log('Áudio público recebido de:', userName);
                 addAudioMessage(userName, audioData, duration, time, 'public');
             });
 
             connection.on("ReceivePrivateAudio", (senderName, audioData, duration, time) => {
+                console.log('Áudio privado recebido de:', senderName);
                 if (currentChat === 'private' && selectedUser === senderName) {
                     addAudioMessage(senderName, audioData, duration, time, 'private', false);
                 }
                 highlightUserInList(senderName);
+                showNotification(`🎵 Áudio recebido de ${senderName}`, 'info');
             });
 
             connection.on("PrivateAudioSent", (receiverName, audioData, duration, time) => {
+                console.log('Áudio privado enviado para:', receiverName);
                 if (currentChat === 'private' && selectedUser === receiverName) {
                     addAudioMessage(currentUser, audioData, duration, time, 'private', true);
                 }
@@ -937,6 +941,63 @@
         // Show notification
         function showNotification(message, type = 'info') {
             console.log(`${type}: ${message}`);
+            
+            // Create toast notification
+            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast show align-items-center border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            let bgClass = 'bg-primary';
+            let icon = 'ri-information-line';
+            
+            switch(type) {
+                case 'success':
+                    bgClass = 'bg-success';
+                    icon = 'ri-check-line';
+                    break;
+                case 'error':
+                    bgClass = 'bg-danger';
+                    icon = 'ri-error-warning-line';
+                    break;
+                case 'warning':
+                    bgClass = 'bg-warning';
+                    icon = 'ri-alert-line';
+                    break;
+            }
+            
+            toast.className += ` ${bgClass} text-white`;
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+        
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
         }
 
         // Utility functions
@@ -958,6 +1019,8 @@
         }
 
         // Audio recording functions
+        let audioStream = null;
+
         async function toggleAudioRecording() {
             if (!isRecording) {
                 await startRecording();
@@ -970,95 +1033,110 @@
             try {
                 // Check if browser supports getUserMedia
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert('Seu navegador não suporta gravação de áudio.');
+                    showNotification('Seu navegador não suporta gravação de áudio.', 'error');
                     return;
                 }
 
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                // Request microphone access
+                audioStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
+                        autoGainControl: true,
                         sampleRate: 44100
                     } 
                 });
                 
                 // Check if MediaRecorder is supported
                 if (!window.MediaRecorder) {
-                    alert('Gravação de áudio não é suportada neste navegador.');
-                    stream.getTracks().forEach(track => track.stop());
+                    showNotification('Gravação de áudio não é suportada neste navegador.', 'error');
+                    audioStream.getTracks().forEach(track => track.stop());
                     return;
                 }
 
-                mediaRecorder = new MediaRecorder(stream, {
-                    mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+                // Determine the best audio format
+                let mimeType = 'audio/webm';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                    mimeType = 'audio/ogg;codecs=opus';
+                }
+
+                mediaRecorder = new MediaRecorder(audioStream, {
+                    mimeType: mimeType
                 });
                 audioChunks = [];
                 
                 mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
+                    if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
+                        console.log('Chunk de áudio coletado:', event.data.size, 'bytes');
                     }
                 };
                 
                 mediaRecorder.onstop = async () => {
+                    console.log('MediaRecorder parou. Processando áudio...');
                     try {
                         if (audioChunks.length === 0) {
-                            console.error('Nenhum dado de áudio foi gravado');
+                            console.error('Nenhum chunk de áudio foi coletado');
+                            showNotification('Erro: nenhum áudio foi gravado', 'error');
                             return;
                         }
 
                         const audioBlob = new Blob(audioChunks, { 
-                            type: mediaRecorder.mimeType || 'audio/webm' 
+                            type: mimeType
                         });
+                        
+                        console.log('Blob criado:', audioBlob.size, 'bytes, tipo:', audioBlob.type);
                         
                         if (audioBlob.size === 0) {
                             console.error('Blob de áudio está vazio');
+                            showNotification('Erro: arquivo de áudio vazio', 'error');
                             return;
                         }
 
-                        const duration = (Date.now() - recordingStartTime) / 1000;
+                        const duration = Math.max(0.5, (Date.now() - recordingStartTime) / 1000);
                         
-                        // Ensure minimum duration
-                        if (duration < 0.5) {
-                            alert('Gravação muito curta. Tente gravar por mais tempo.');
-                            return;
-                        }
-
+                        console.log('Duração calculada:', duration, 'segundos');
+                        
+                        // Send the audio
                         await sendAudioMessage(audioBlob, duration);
+                        
                     } catch (error) {
                         console.error('Erro ao processar áudio:', error);
-                        alert('Erro ao processar gravação de áudio.');
-                    } finally {
-                        // Stop all tracks to release microphone
-                        stream.getTracks().forEach(track => track.stop());
+                        showNotification('Erro ao processar gravação de áudio: ' + error.message, 'error');
                     }
                 };
 
                 mediaRecorder.onerror = (event) => {
                     console.error('Erro do MediaRecorder:', event.error);
-                    alert('Erro durante a gravação: ' + event.error.message);
+                    showNotification('Erro durante a gravação: ' + event.error.message, 'error');
+                    resetRecordingUI();
                 };
                 
-                mediaRecorder.start(1000); // Collect data every second
+                // Start recording
+                mediaRecorder.start(100); // Collect data every 100ms for better quality
                 isRecording = true;
                 recordingStartTime = Date.now();
                 
                 // Update UI
-                const audioBtn = document.getElementById('audioBtn');
-                const audioIcon = document.getElementById('audioIcon');
-                audioBtn.classList.add('recording');
-                audioIcon.className = 'bx bx-stop';
+                updateRecordingUI(true);
                 
-                console.log('Gravação iniciada...');
+                console.log('Gravação iniciada com formato:', mimeType);
+                showNotification('🎤 Gravação iniciada...', 'info');
                 
             } catch (error) {
                 console.error('Erro ao acessar microfone:', error);
+                resetRecordingUI();
+                
                 if (error.name === 'NotAllowedError') {
-                    alert('Permissão para acessar o microfone foi negada. Por favor, permita o acesso e tente novamente.');
+                    showNotification('Permissão para acessar o microfone foi negada. Por favor, permita o acesso e tente novamente.', 'error');
                 } else if (error.name === 'NotFoundError') {
-                    alert('Nenhum microfone encontrado. Verifique se há um microfone conectado.');
+                    showNotification('Nenhum microfone encontrado. Verifique se há um microfone conectado.', 'error');
                 } else {
-                    alert('Erro ao acessar microfone: ' + error.message);
+                    showNotification('Erro ao acessar microfone: ' + error.message, 'error');
                 }
             }
         }
@@ -1066,70 +1144,124 @@
         async function stopRecording() {
             if (mediaRecorder && isRecording) {
                 try {
+                    console.log('Parando gravação...');
                     mediaRecorder.stop();
                     isRecording = false;
                     
-                    // Update UI
-                    const audioBtn = document.getElementById('audioBtn');
-                    const audioIcon = document.getElementById('audioIcon');
-                    audioBtn.classList.remove('recording');
-                    audioIcon.className = 'bx bx-microphone';
+                    // Stop microphone stream
+                    if (audioStream) {
+                        audioStream.getTracks().forEach(track => {
+                            track.stop();
+                            console.log('Track parada:', track.kind);
+                        });
+                        audioStream = null;
+                    }
                     
-                    console.log('Gravação parada...');
+                    // Update UI
+                    updateRecordingUI(false);
+                    
+                    console.log('Gravação parada. Processando...');
+                    showNotification('🎤 Processando gravação...', 'info');
+                    
                 } catch (error) {
                     console.error('Erro ao parar gravação:', error);
+                    resetRecordingUI();
                 }
             }
         }
 
-        async function sendAudioMessage(audioBlob, duration) {
-            if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
-                alert('Conexão perdida. Tentando reconectar...');
-                await startConnection();
-                return;
+        function updateRecordingUI(recording) {
+            const audioBtn = document.getElementById('audioBtn');
+            const audioIcon = document.getElementById('audioIcon');
+            
+            if (recording) {
+                audioBtn.classList.add('recording');
+                audioIcon.className = 'bx bx-stop';
+                audioBtn.title = 'Parar gravação';
+            } else {
+                audioBtn.classList.remove('recording');
+                audioIcon.className = 'bx bx-microphone';
+                audioBtn.title = 'Gravar áudio';
             }
+        }
 
-            const reader = new FileReader();
-            reader.onload = async function() {
-                try {
-                    const audioData = reader.result; // Base64 string
+        function resetRecordingUI() {
+            isRecording = false;
+            updateRecordingUI(false);
+            
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+        }
+
+        async function sendAudioMessage(audioBlob, duration) {
+            try {
+                // Check connection
+                if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                    console.warn('Conexão não está ativa. Tentando reconectar...');
+                    showNotification('Reconectando...', 'info');
+                    await startConnection();
                     
-                    if (!audioData || audioData.length < 100) {
-                        console.error('Dados de áudio inválidos');
-                        alert('Erro: dados de áudio inválidos');
-                        return;
-                    }
+                    // Wait a bit for reconnection
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     
-                    console.log('Enviando áudio...', { duration, dataSize: audioData.length });
-                    
-                    if (currentChat === 'public') {
-                        await connection.invoke("SendPublicAudio", currentUser, audioData, duration);
-                    } else if (currentChat === 'private' && selectedUser) {
-                        await connection.invoke("SendPrivateAudio", currentUser, selectedUser, audioData, duration);
-                    } else {
-                        alert('Selecione um chat para enviar o áudio');
-                        return;
-                    }
-                    
-                    console.log('Áudio enviado com sucesso!');
-                    
-                } catch (err) {
-                    console.error('Erro ao enviar áudio:', err);
-                    alert('Erro ao enviar áudio. Tente novamente.');
-                    
-                    // Try to reconnect if connection was lost
-                    if (err.message && err.message.includes('connection')) {
-                        await startConnection();
+                    if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+                        throw new Error('Não foi possível reconectar');
                     }
                 }
-            };
-            
-            reader.onerror = (error) => {
-                console.error('Erro ao ler arquivo de áudio:', error);
-                alert('Erro ao processar áudio gravado');
-            };
-            
-            reader.readAsDataURL(audioBlob);
+
+                // Convert audio to base64
+                const reader = new FileReader();
+                
+                const audioDataPromise = new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Erro ao ler arquivo de áudio'));
+                    reader.readAsDataURL(audioBlob);
+                });
+
+                const audioData = await audioDataPromise;
+                
+                if (!audioData || audioData.length < 100) {
+                    throw new Error('Dados de áudio inválidos');
+                }
+                
+                console.log('Enviando áudio...', { 
+                    duration: duration.toFixed(2), 
+                    dataSize: audioData.length,
+                    blobSize: audioBlob.size,
+                    type: audioBlob.type
+                });
+                
+                // Send based on current chat
+                if (currentChat === 'public') {
+                    await connection.invoke("SendPublicAudio", currentUser, audioData, duration);
+                    console.log('Áudio público enviado com sucesso!');
+                } else if (currentChat === 'private' && selectedUser) {
+                    await connection.invoke("SendPrivateAudio", currentUser, selectedUser, audioData, duration);
+                    console.log('Áudio privado enviado com sucesso para', selectedUser);
+                } else {
+                    throw new Error('Selecione um chat para enviar o áudio');
+                }
+                
+                showNotification('✅ Áudio enviado com sucesso!', 'success');
+                
+            } catch (err) {
+                console.error('Erro ao enviar áudio:', err);
+                showNotification('❌ Erro ao enviar áudio: ' + err.message, 'error');
+                
+                // Try to reconnect if it's a connection issue
+                if (err.message && (err.message.includes('connection') || err.message.includes('invoke'))) {
+                    console.log('Tentando reconectar devido a erro de conexão...');
+                    setTimeout(async () => {
+                        try {
+                            await startConnection();
+                        } catch (reconnectError) {
+                            console.error('Erro ao reconectar:', reconnectError);
+                        }
+                    }, 2000);
+                }
+            }
         }
 
         function addAudioMessage(userName, audioData, duration, time, chatType, isSent = false) {
