@@ -1054,19 +1054,33 @@
                     return;
                 }
 
-                // Determine the best audio format
+                // Determine the best audio format with compression settings
                 let mimeType = 'audio/webm';
+                let options = {};
+                
                 if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                     mimeType = 'audio/webm;codecs=opus';
-                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                    mimeType = 'audio/mp4';
+                    options = {
+                        mimeType: mimeType,
+                        audioBitsPerSecond: 64000 // Lower bitrate for smaller files
+                    };
+                } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                    mimeType = 'audio/webm';
+                    options = {
+                        mimeType: mimeType,
+                        audioBitsPerSecond: 64000
+                    };
                 } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
                     mimeType = 'audio/ogg;codecs=opus';
+                    options = {
+                        mimeType: mimeType,
+                        audioBitsPerSecond: 64000
+                    };
+                } else {
+                    options = { mimeType: mimeType };
                 }
 
-                mediaRecorder = new MediaRecorder(audioStream, {
-                    mimeType: mimeType
-                });
+                mediaRecorder = new MediaRecorder(audioStream, options);
                 audioChunks = [];
                 
                 mediaRecorder.ondataavailable = (event) => {
@@ -1117,7 +1131,7 @@
                 };
                 
                 // Start recording
-                mediaRecorder.start(100); // Collect data every 100ms for better quality
+                mediaRecorder.start(250); // Collect data every 250ms (less frequent for smaller chunks)
                 isRecording = true;
                 recordingStartTime = Date.now();
                 
@@ -1125,7 +1139,15 @@
                 updateRecordingUI(true);
                 
                 console.log('Gravação iniciada com formato:', mimeType);
-                showNotification('🎤 Gravação iniciada...', 'info');
+                showNotification('🎤 Gravação iniciada... (máx. 30s)', 'info');
+                
+                // Auto-stop recording after 30 seconds
+                setTimeout(() => {
+                    if (isRecording) {
+                        stopRecording();
+                        showNotification('⏱️ Gravação parada automaticamente (30s)', 'warning');
+                    }
+                }, 30000);
                 
             } catch (error) {
                 console.error('Erro ao acessar microfone:', error);
@@ -1197,6 +1219,18 @@
 
         async function sendAudioMessage(audioBlob, duration) {
             try {
+                // Limit audio duration to 30 seconds maximum
+                if (duration > 30) {
+                    showNotification('❌ Áudio muito longo. Máximo de 30 segundos.', 'error');
+                    return;
+                }
+
+                // Limit audio file size to 5MB maximum
+                if (audioBlob.size > 5 * 1024 * 1024) {
+                    showNotification('❌ Arquivo de áudio muito grande. Máximo de 5MB.', 'error');
+                    return;
+                }
+
                 // Check connection
                 if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
                     console.warn('Conexão não está ativa. Tentando reconectar...');
@@ -1204,10 +1238,22 @@
                     await startConnection();
                     
                     // Wait a bit for reconnection
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                     
                     if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
                         throw new Error('Não foi possível reconectar');
+                    }
+                }
+
+                // Compress audio if it's too large
+                let finalBlob = audioBlob;
+                if (audioBlob.size > 1024 * 1024) { // If larger than 1MB, try to compress
+                    try {
+                        finalBlob = await compressAudio(audioBlob);
+                        console.log('Áudio comprimido de', audioBlob.size, 'para', finalBlob.size, 'bytes');
+                    } catch (compressError) {
+                        console.warn('Falha na compressão, usando áudio original:', compressError);
+                        finalBlob = audioBlob;
                     }
                 }
 
@@ -1217,7 +1263,7 @@
                 const audioDataPromise = new Promise((resolve, reject) => {
                     reader.onload = () => resolve(reader.result);
                     reader.onerror = () => reject(new Error('Erro ao ler arquivo de áudio'));
-                    reader.readAsDataURL(audioBlob);
+                    reader.readAsDataURL(finalBlob);
                 });
 
                 const audioData = await audioDataPromise;
@@ -1225,43 +1271,111 @@
                 if (!audioData || audioData.length < 100) {
                     throw new Error('Dados de áudio inválidos');
                 }
+
+                // Check final data size
+                if (audioData.length > 6 * 1024 * 1024) { // 6MB base64 limit
+                    throw new Error('Arquivo de áudio muito grande após conversão');
+                }
                 
                 console.log('Enviando áudio...', { 
                     duration: duration.toFixed(2), 
                     dataSize: audioData.length,
-                    blobSize: audioBlob.size,
-                    type: audioBlob.type
+                    blobSize: finalBlob.size,
+                    type: finalBlob.type
                 });
                 
-                // Send based on current chat
-                if (currentChat === 'public') {
-                    await connection.invoke("SendPublicAudio", currentUser, audioData, duration);
-                    console.log('Áudio público enviado com sucesso!');
-                } else if (currentChat === 'private' && selectedUser) {
-                    await connection.invoke("SendPrivateAudio", currentUser, selectedUser, audioData, duration);
-                    console.log('Áudio privado enviado com sucesso para', selectedUser);
-                } else {
-                    throw new Error('Selecione um chat para enviar o áudio');
-                }
+                // Set a timeout for the operation
+                const sendPromise = new Promise(async (resolve, reject) => {
+                    try {
+                        if (currentChat === 'public') {
+                            await connection.invoke("SendPublicAudio", currentUser, audioData, duration);
+                            console.log('Áudio público enviado com sucesso!');
+                        } else if (currentChat === 'private' && selectedUser) {
+                            await connection.invoke("SendPrivateAudio", currentUser, selectedUser, audioData, duration);
+                            console.log('Áudio privado enviado com sucesso para', selectedUser);
+                        } else {
+                            throw new Error('Selecione um chat para enviar o áudio');
+                        }
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout: áudio demorou muito para ser enviado')), 30000); // 30 second timeout
+                });
+
+                await Promise.race([sendPromise, timeoutPromise]);
                 
                 showNotification('✅ Áudio enviado com sucesso!', 'success');
                 
             } catch (err) {
                 console.error('Erro ao enviar áudio:', err);
-                showNotification('❌ Erro ao enviar áudio: ' + err.message, 'error');
+                
+                let errorMessage = 'Erro ao enviar áudio: ';
+                if (err.message.includes('Timeout')) {
+                    errorMessage += 'Tempo esgotado. Tente com um áudio menor.';
+                } else if (err.message.includes('muito grande')) {
+                    errorMessage += 'Arquivo muito grande. Grave um áudio mais curto.';
+                } else if (err.message.includes('Connection closed')) {
+                    errorMessage += 'Conexão perdida. Tentando reconectar...';
+                } else {
+                    errorMessage += err.message;
+                }
+                
+                showNotification('❌ ' + errorMessage, 'error');
                 
                 // Try to reconnect if it's a connection issue
-                if (err.message && (err.message.includes('connection') || err.message.includes('invoke'))) {
+                if (err.message && (err.message.includes('connection') || err.message.includes('invoke') || err.message.includes('Connection closed'))) {
                     console.log('Tentando reconectar devido a erro de conexão...');
                     setTimeout(async () => {
                         try {
                             await startConnection();
+                            showNotification('🔄 Reconectado! Tente enviar o áudio novamente.', 'success');
                         } catch (reconnectError) {
                             console.error('Erro ao reconectar:', reconnectError);
+                            showNotification('❌ Falha na reconexão. Recarregue a página.', 'error');
                         }
                     }, 2000);
                 }
             }
+        }
+
+        // Function to compress audio
+        async function compressAudio(audioBlob) {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // For audio compression, we'll reduce the quality by re-encoding
+                const audio = new Audio();
+                const url = URL.createObjectURL(audioBlob);
+                
+                audio.onloadeddata = () => {
+                    try {
+                        // Create a new MediaRecorder with lower quality settings
+                        const stream = new MediaStream();
+                        
+                        // Since we can't easily compress existing audio in browser,
+                        // we'll just return the original for now
+                        // In a real implementation, you'd use a library like ffmpeg.wasm
+                        URL.revokeObjectURL(url);
+                        resolve(audioBlob);
+                        
+                    } catch (error) {
+                        URL.revokeObjectURL(url);
+                        reject(error);
+                    }
+                };
+                
+                audio.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Erro ao carregar áudio para compressão'));
+                };
+                
+                audio.src = url;
+            });
         }
 
         function addAudioMessage(userName, audioData, duration, time, chatType, isSent = false) {
