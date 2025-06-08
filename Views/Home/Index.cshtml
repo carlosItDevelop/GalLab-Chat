@@ -1,0 +1,764 @@
+
+@{
+    ViewBag.Title = "Chat";
+    Layout = null;
+}
+
+<!doctype html>
+<html lang="pt-br" data-layout="vertical" data-topbar="light" data-sidebar="dark" data-sidebar-size="sm-hover" data-sidebar-image="none" data-preloader="disable">
+<head>
+    <meta charset="utf-8" />
+    <title>Chat Moderno - SignalR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="Sistema de Chat em Tempo Real" name="description" />
+    <meta content="SignalR" name="author" />
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Remix Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- BoxIcons -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f3f6f9;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .chat-wrapper {
+            height: 100vh;
+            background-color: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        
+        .chat-leftsidebar {
+            width: 320px;
+            border-right: 1px solid #e9ecef;
+            background-color: #fff;
+            border-top-left-radius: 0.75rem;
+            border-bottom-left-radius: 0.75rem;
+        }
+        
+        .user-chat {
+            background-color: #fff;
+            border-top-right-radius: 0.75rem;
+            border-bottom-right-radius: 0.75rem;
+        }
+        
+        .chat-conversation {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .chat-input-section {
+            border-top: 1px solid #e9ecef;
+            background-color: #fff;
+        }
+        
+        .chat-user-list li {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .chat-user-list li:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .chat-user-list li.active {
+            background-color: #e7f3ff;
+            border-left: 3px solid #007bff;
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+        }
+        
+        .message.sent {
+            text-align: right;
+        }
+        
+        .message.received {
+            text-align: left;
+        }
+        
+        .message-content {
+            display: inline-block;
+            max-width: 70%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            position: relative;
+        }
+        
+        .message.sent .message-content {
+            background-color: #007bff;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+        
+        .message.received .message-content {
+            background-color: #e9ecef;
+            color: #495057;
+            border-bottom-left-radius: 0.25rem;
+        }
+        
+        .message-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+        
+        .user-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            border: 2px solid #fff;
+        }
+        
+        .user-status.online {
+            background-color: #28a745;
+        }
+        
+        .avatar-xs {
+            width: 2rem;
+            height: 2rem;
+        }
+        
+        .avatar-sm {
+            width: 2.5rem;
+            height: 2.5rem;
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-box .search-icon {
+            position: absolute;
+            top: 50%;
+            right: 0.75rem;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        
+        .nav-tabs-custom {
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .nav-tabs-custom .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        .nav-tabs-custom .nav-link.active {
+            color: #28a745;
+            border-bottom: 2px solid #28a745;
+        }
+        
+        .public-chat-indicator {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .private-chat-indicator {
+            background: linear-gradient(45deg, #007bff, #6610f2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        #loginSection {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .system-message {
+            margin: 0.5rem 0;
+        }
+        
+        .system-message-content {
+            display: inline-block;
+            background-color: rgba(108, 117, 125, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(108, 117, 125, 0.2);
+        }
+        
+        .toast-container {
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Section -->
+    <div id="loginSection">
+        <div class="login-card">
+            <div class="text-center mb-4">
+                <h3 class="text-dark">💬 Chat Moderno</h3>
+                <p class="text-muted">Entre com seu nome para começar</p>
+            </div>
+            <div class="mb-3">
+                <input type="text" id="usernameInput" class="form-control" placeholder="Digite seu nome..." maxlength="20">
+            </div>
+            <button id="joinChatBtn" class="btn btn-primary w-100">Entrar no Chat</button>
+        </div>
+    </div>
+
+    <!-- Chat Section -->
+    <div id="chatSection" style="display: none;">
+        <div class="container-fluid p-3">
+            <div class="chat-wrapper d-lg-flex gap-1">
+                <!-- Left Sidebar -->
+                <div class="chat-leftsidebar">
+                    <div class="px-4 pt-4 mb-4">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-4">💬 Chat Moderno</h5>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <button type="button" class="btn btn-soft-success btn-sm" onclick="toggleChatMode()">
+                                    <i class="ri-group-line align-bottom"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" class="form-control bg-light border-light" placeholder="Buscar usuários..." id="searchUsers">
+                            <i class="ri-search-2-line search-icon"></i>
+                        </div>
+                    </div>
+
+                    <ul class="nav nav-tabs nav-tabs-custom nav-success nav-justified" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#chats" role="tab">
+                                Conversas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#contacts" role="tab">
+                                Usuários Online
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content text-muted">
+                        <div class="tab-pane active" id="chats" role="tabpanel">
+                            <div class="chat-room-list pt-3">
+                                <div class="d-flex align-items-center px-4 mb-2">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fs-12 text-muted text-uppercase">Conversas Diretas</h6>
+                                    </div>
+                                </div>
+                                <div class="chat-message-list">
+                                    <ul class="list-unstyled chat-list chat-user-list" id="userList">
+                                        <li onclick="selectPublicChat()" class="active">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0 chat-user-img me-3">
+                                                    <div class="avatar-xs">
+                                                        <span class="avatar-title rounded-circle bg-success text-white">
+                                                            <i class="ri-group-line"></i>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1 overflow-hidden">
+                                                    <h5 class="text-truncate mb-0 fs-14">Chat Público</h5>
+                                                    <p class="chat-user-message text-truncate mb-0">Conversa geral</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane" id="contacts" role="tabpanel">
+                            <div class="chat-room-list pt-3">
+                                <div class="sort-contact" id="onlineUsersList">
+                                    <!-- Online users will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Chat Area -->
+                <div class="user-chat w-100 overflow-hidden">
+                    <div class="chat-content d-lg-flex">
+                        <div class="w-100 overflow-hidden position-relative">
+                            <!-- Chat Header -->
+                            <div class="p-3 user-chat-topbar border-bottom">
+                                <div class="row align-items-center">
+                                    <div class="col-sm-4 col-8">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0 chat-user-img me-3">
+                                                        <div class="avatar-xs">
+                                                            <span class="avatar-title rounded-circle bg-primary text-white" id="chatHeaderIcon">
+                                                                <i class="ri-group-line"></i>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <h5 class="text-truncate mb-0 fs-16" id="chatHeaderTitle">Chat Público</h5>
+                                                        <p class="text-truncate text-muted mb-0" id="chatHeaderStatus">Conversa geral</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-8 col-4">
+                                        <ul class="list-inline user-chat-nav text-end mb-0">
+                                            <li class="list-inline-item m-0">
+                                                <span class="badge bg-success" id="onlineCount">0 online</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Chat Messages -->
+                            <div class="chat-conversation p-3" id="chatMessages">
+                                <div id="currentChatIndicator" class="public-chat-indicator">
+                                    <i class="ri-group-line me-2"></i>Chat Público - Suas mensagens serão vistas por todos
+                                </div>
+                                <ul class="list-unstyled chat-conversation-list" id="messagesList">
+                                    <!-- Messages will be populated here -->
+                                </ul>
+                            </div>
+
+                            <!-- Chat Input -->
+                            <div class="chat-input-section p-3">
+                                <form id="messageForm">
+                                    <div class="row g-0 align-items-center">
+                                        <div class="col-auto">
+                                            <div class="chat-input-links me-2">
+                                                <button type="button" class="btn btn-link text-decoration-none" onclick="addEmoji()">
+                                                    <i class="bx bx-smile align-middle"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <input type="text" class="form-control chat-input bg-light border-light" 
+                                                   id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="500">
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="chat-input-links ms-2">
+                                                <button type="submit" class="btn btn-success chat-send">
+                                                    <i class="ri-send-plane-2-fill align-bottom"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+
+    <script>
+        let connection;
+        let currentUser = '';
+        let currentChat = 'public';
+        let selectedUser = null;
+
+        // Initialize SignalR connection
+        async function startConnection() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/chatHub")
+                .build();
+
+            // Connection events
+            connection.onclose(async () => {
+                await start();
+            });
+
+            // Message events
+            connection.on("ReceivePublicMessage", (userName, message, time) => {
+                addMessage(userName, message, time, 'public');
+            });
+
+            connection.on("ReceivePrivateMessage", (senderName, message, time) => {
+                if (currentChat === 'private' && selectedUser === senderName) {
+                    addMessage(senderName, message, time, 'private', false);
+                }
+                highlightUserInList(senderName);
+            });
+
+            connection.on("PrivateMessageSent", (receiverName, message, time) => {
+                if (currentChat === 'private' && selectedUser === receiverName) {
+                    addMessage(currentUser, message, time, 'private', true);
+                }
+            });
+
+            connection.on("UserJoined", (userName) => {
+                updateUsersList();
+                showNotification(`🎉 ${userName} entrou na conversa`, 'success');
+                addSystemMessage(`${userName} entrou na conversa`);
+            });
+
+            connection.on("UserDisconnected", (userName) => {
+                updateUsersList();
+                showNotification(`👋 ${userName} saiu da conversa`, 'info');
+                addSystemMessage(`${userName} saiu da conversa`);
+            });
+
+            connection.on("UpdateUsersList", (users) => {
+                populateUsersList(users);
+                updateOnlineCount(users.length);
+            });
+
+            connection.on("UserNotFound", (receiverName) => {
+                showNotification(`Usuário ${receiverName} não encontrado`, 'error');
+            });
+
+            await connection.start();
+        }
+
+        // Join chat
+        async function joinChat() {
+            const username = document.getElementById('usernameInput').value.trim();
+            if (username.length < 2) {
+                alert('Nome deve ter pelo menos 2 caracteres');
+                return;
+            }
+            
+            currentUser = username;
+            await startConnection();
+            await connection.invoke("JoinChat", username);
+            
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('chatSection').style.display = 'block';
+        }
+
+        // Send message
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message === '') return;
+
+            try {
+                if (currentChat === 'public') {
+                    await connection.invoke("SendPublicMessage", currentUser, message);
+                } else if (currentChat === 'private' && selectedUser) {
+                    await connection.invoke("SendPrivateMessage", currentUser, selectedUser, message);
+                }
+                messageInput.value = '';
+            } catch (err) {
+                console.error('Erro ao enviar mensagem:', err);
+            }
+        }
+
+        // Add message to chat
+        function addMessage(userName, message, time, chatType, isSent = false) {
+            if ((chatType === 'public' && currentChat !== 'public') || 
+                (chatType === 'private' && currentChat !== 'private')) {
+                return;
+            }
+
+            const messagesList = document.getElementById('messagesList');
+            const isCurrentUser = userName === currentUser || isSent;
+            
+            const messageElement = document.createElement('li');
+            messageElement.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+            
+            messageElement.innerHTML = `
+                <div class="message-content">
+                    ${!isCurrentUser ? `<div class="fw-bold mb-1">${userName}</div>` : ''}
+                    <div>${escapeHtml(message)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            messagesList.appendChild(messageElement);
+            scrollToBottom();
+        }
+
+        // Add system message (for join/leave notifications)
+        function addSystemMessage(message) {
+            if (currentChat !== 'public') return; // Only show in public chat
+            
+            const messagesList = document.getElementById('messagesList');
+            const messageElement = document.createElement('li');
+            messageElement.className = 'system-message text-center my-2';
+            
+            messageElement.innerHTML = `
+                <div class="system-message-content">
+                    <small class="text-muted">
+                        <i class="ri-information-line me-1"></i>
+                        ${escapeHtml(message)}
+                    </small>
+                </div>
+            `;
+            
+            messagesList.appendChild(messageElement);
+            scrollToBottom();
+        }
+
+        // Populate users list
+        function populateUsersList(users) {
+            const userList = document.getElementById('userList');
+            const onlineUsersList = document.getElementById('onlineUsersList');
+            
+            // Clear existing private chats (keep public chat)
+            const publicChat = userList.querySelector('li');
+            userList.innerHTML = '';
+            userList.appendChild(publicChat);
+            
+            // Clear online users
+            onlineUsersList.innerHTML = '';
+
+            users.forEach(user => {
+                if (user !== currentUser) {
+                    // Add to chat list
+                    const userItem = document.createElement('li');
+                    userItem.onclick = () => selectPrivateChat(user);
+                    userItem.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 chat-user-img me-3">
+                                <div class="avatar-xs">
+                                    <span class="avatar-title rounded-circle bg-info text-white">
+                                        ${user.charAt(0).toUpperCase()}
+                                    </span>
+                                    <span class="user-status online"></span>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <h5 class="text-truncate mb-0 fs-14">${user}</h5>
+                                <p class="chat-user-message text-truncate mb-0">Online</p>
+                            </div>
+                        </div>
+                    `;
+                    userList.appendChild(userItem);
+
+                    // Add to online users tab
+                    const onlineUserItem = document.createElement('div');
+                    onlineUserItem.className = 'px-4 py-2 border-bottom';
+                    onlineUserItem.onclick = () => selectPrivateChat(user);
+                    onlineUserItem.style.cursor = 'pointer';
+                    onlineUserItem.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="avatar-xs">
+                                    <span class="avatar-title rounded-circle bg-success text-white">
+                                        ${user.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">${user}</h6>
+                                <p class="text-muted mb-0 fs-12">Online</p>
+                            </div>
+                        </div>
+                    `;
+                    onlineUsersList.appendChild(onlineUserItem);
+                }
+            });
+        }
+
+        // Select public chat
+        function selectPublicChat() {
+            currentChat = 'public';
+            selectedUser = null;
+            
+            // Update UI
+            document.getElementById('chatHeaderTitle').textContent = 'Chat Público';
+            document.getElementById('chatHeaderStatus').textContent = 'Conversa geral';
+            document.getElementById('chatHeaderIcon').innerHTML = '<i class="ri-group-line"></i>';
+            document.getElementById('currentChatIndicator').className = 'public-chat-indicator';
+            document.getElementById('currentChatIndicator').innerHTML = '<i class="ri-group-line me-2"></i>Chat Público - Suas mensagens serão vistas por todos';
+            
+            // Clear messages and update active state
+            clearMessages();
+            updateActiveChat('public');
+        }
+
+        // Select private chat
+        function selectPrivateChat(userName) {
+            currentChat = 'private';
+            selectedUser = userName;
+            
+            // Update UI
+            document.getElementById('chatHeaderTitle').textContent = userName;
+            document.getElementById('chatHeaderStatus').textContent = 'Conversa privada';
+            document.getElementById('chatHeaderIcon').innerHTML = userName.charAt(0).toUpperCase();
+            document.getElementById('currentChatIndicator').className = 'private-chat-indicator';
+            document.getElementById('currentChatIndicator').innerHTML = `<i class="ri-user-line me-2"></i>Conversa Privada com ${userName}`;
+            
+            // Clear messages and update active state
+            clearMessages();
+            updateActiveChat(userName);
+        }
+
+        // Update active chat in sidebar
+        function updateActiveChat(chatId) {
+            const userListItems = document.querySelectorAll('#userList li');
+            userListItems.forEach(item => {
+                item.classList.remove('active');
+                if ((chatId === 'public' && item.textContent.includes('Chat Público')) ||
+                    (chatId !== 'public' && item.textContent.includes(chatId))) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Clear messages
+        function clearMessages() {
+            document.getElementById('messagesList').innerHTML = '';
+        }
+
+        // Update online count
+        function updateOnlineCount(count) {
+            document.getElementById('onlineCount').textContent = `${count} online`;
+        }
+
+        // Highlight user in list (for new private messages)
+        function highlightUserInList(userName) {
+            // Add visual indicator for new message
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Create toast notification
+            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="ri-${type === 'error' ? 'error-warning' : 'notification'}-line me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Initialize and show toast
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000
+            });
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+            
+            console.log(`${type}: ${message}`);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addEmoji() {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value += '😊';
+            messageInput.focus();
+        }
+
+        function toggleChatMode() {
+            if (currentChat === 'public') {
+                if (selectedUser) {
+                    selectPrivateChat(selectedUser);
+                }
+            } else {
+                selectPublicChat();
+            }
+        }
+
+        async function updateUsersList() {
+            // This will trigger the server to send updated users list
+        }
+
+        // Event listeners
+        document.getElementById('joinChatBtn').addEventListener('click', joinChat);
+        document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinChat();
+        });
+
+        document.getElementById('messageForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Search functionality
+        document.getElementById('searchUsers').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const userItems = document.querySelectorAll('#userList li:not(:first-child)');
+            
+            userItems.forEach(item => {
+                const userName = item.textContent.toLowerCase();
+                item.style.display = userName.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>
