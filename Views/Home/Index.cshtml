@@ -373,6 +373,73 @@
             object-fit: cover;
             border-radius: 50%;
         }
+
+        /* Audio recording styles */
+        .recording {
+            background-color: #dc3545 !important;
+            color: white !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .audio-message {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            min-width: 200px;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .audio-play-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--vz-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .audio-play-btn:hover {
+            background-color: #2a5fc7;
+        }
+
+        .audio-duration {
+            font-size: 0.8rem;
+            color: #6c757d;
+            min-width: 40px;
+        }
+
+        .audio-waveform {
+            flex: 1;
+            height: 20px;
+            background: linear-gradient(to right, var(--vz-primary) 0%, rgba(53, 119, 240, 0.3) 100%);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .audio-progress {
+            height: 100%;
+            background-color: var(--vz-primary);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
     </style>
 </head>
 
@@ -500,6 +567,11 @@
                                     <i class="bx bx-smile"></i>
                                 </button>
                             </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-link" id="audioBtn" onclick="toggleAudioRecording()">
+                                    <i class="bx bx-microphone" id="audioIcon"></i>
+                                </button>
+                            </div>
                             <div class="col">
                                 <input type="text" class="form-control chat-input" 
                                        id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="500">
@@ -526,6 +598,12 @@
         let currentUser = '';
         let currentChat = 'public';
         let selectedUser = null;
+        
+        // Audio recording variables
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingStartTime;
 
         // User avatars mapping
         const userAvatars = {};
@@ -576,6 +654,23 @@
             connection.on("PrivateMessageSent", (receiverName, message, time) => {
                 if (currentChat === 'private' && selectedUser === receiverName) {
                     addMessage(currentUser, message, time, 'private', true);
+                }
+            });
+
+            connection.on("ReceivePublicAudio", (userName, audioData, duration, time) => {
+                addAudioMessage(userName, audioData, duration, time, 'public');
+            });
+
+            connection.on("ReceivePrivateAudio", (senderName, audioData, duration, time) => {
+                if (currentChat === 'private' && selectedUser === senderName) {
+                    addAudioMessage(senderName, audioData, duration, time, 'private', false);
+                }
+                highlightUserInList(senderName);
+            });
+
+            connection.on("PrivateAudioSent", (receiverName, audioData, duration, time) => {
+                if (currentChat === 'private' && selectedUser === receiverName) {
+                    addAudioMessage(currentUser, audioData, duration, time, 'private', true);
                 }
             });
 
@@ -828,6 +923,172 @@
             const messageInput = document.getElementById('messageInput');
             messageInput.value += '😊';
             messageInput.focus();
+        }
+
+        // Audio recording functions
+        async function toggleAudioRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                await stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const duration = (Date.now() - recordingStartTime) / 1000;
+                    await sendAudioMessage(audioBlob, duration);
+                    
+                    // Stop all tracks to release microphone
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+                
+                // Update UI
+                const audioBtn = document.getElementById('audioBtn');
+                const audioIcon = document.getElementById('audioIcon');
+                audioBtn.classList.add('recording');
+                audioIcon.className = 'bx bx-stop';
+                
+            } catch (error) {
+                console.error('Erro ao acessar microfone:', error);
+                alert('Erro ao acessar microfone. Verifique as permissões.');
+            }
+        }
+
+        async function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                // Update UI
+                const audioBtn = document.getElementById('audioBtn');
+                const audioIcon = document.getElementById('audioIcon');
+                audioBtn.classList.remove('recording');
+                audioIcon.className = 'bx bx-microphone';
+            }
+        }
+
+        async function sendAudioMessage(audioBlob, duration) {
+            const reader = new FileReader();
+            reader.onload = async function() {
+                const audioData = reader.result; // Base64 string
+                
+                try {
+                    if (currentChat === 'public') {
+                        await connection.invoke("SendPublicAudio", currentUser, audioData, duration);
+                    } else if (currentChat === 'private' && selectedUser) {
+                        await connection.invoke("SendPrivateAudio", currentUser, selectedUser, audioData, duration);
+                    }
+                } catch (err) {
+                    console.error('Erro ao enviar áudio:', err);
+                }
+            };
+            reader.readAsDataURL(audioBlob);
+        }
+
+        function addAudioMessage(userName, audioData, duration, time, chatType, isSent = false) {
+            if ((chatType === 'public' && currentChat !== 'public') || 
+                (chatType === 'private' && currentChat !== 'private')) {
+                return;
+            }
+
+            const messagesList = document.getElementById('messagesList');
+            const isCurrentUser = userName === currentUser || isSent;
+            const avatar = generateAvatar(userName);
+            
+            const messageElement = document.createElement('li');
+            messageElement.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+            
+            const audioId = 'audio_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            messageElement.innerHTML = `
+                <div class="message-avatar" style="background: ${avatar.color}">
+                    ${avatar.initial}
+                </div>
+                <div class="message-content-wrapper">
+                    ${!isCurrentUser ? `<div class="message-sender">${userName}</div>` : ''}
+                    <div class="message-content">
+                        <div class="audio-message">
+                            <div class="audio-controls">
+                                <button class="audio-play-btn" onclick="toggleAudioPlayback('${audioId}')">
+                                    <i class="bx bx-play" id="icon_${audioId}"></i>
+                                </button>
+                                <div class="audio-waveform">
+                                    <div class="audio-progress" id="progress_${audioId}"></div>
+                                </div>
+                                <div class="audio-duration">${formatDuration(duration)}</div>
+                            </div>
+                            <audio id="${audioId}" preload="metadata">
+                                <source src="${audioData}" type="audio/wav">
+                            </audio>
+                        </div>
+                    </div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            messagesList.appendChild(messageElement);
+            scrollToBottom();
+        }
+
+        function toggleAudioPlayback(audioId) {
+            const audio = document.getElementById(audioId);
+            const icon = document.getElementById('icon_' + audioId);
+            const progress = document.getElementById('progress_' + audioId);
+            
+            if (audio.paused) {
+                // Stop all other audios
+                document.querySelectorAll('audio').forEach(a => {
+                    if (a.id !== audioId) {
+                        a.pause();
+                        a.currentTime = 0;
+                        const otherIcon = document.getElementById('icon_' + a.id);
+                        if (otherIcon) otherIcon.className = 'bx bx-play';
+                        const otherProgress = document.getElementById('progress_' + a.id);
+                        if (otherProgress) otherProgress.style.width = '0%';
+                    }
+                });
+                
+                audio.play();
+                icon.className = 'bx bx-pause';
+                
+                // Update progress
+                audio.ontimeupdate = () => {
+                    const percentage = (audio.currentTime / audio.duration) * 100;
+                    progress.style.width = percentage + '%';
+                };
+                
+                audio.onended = () => {
+                    icon.className = 'bx bx-play';
+                    progress.style.width = '0%';
+                };
+                
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+                icon.className = 'bx bx-play';
+                progress.style.width = '0%';
+            }
+        }
+
+        function formatDuration(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
 
         function toggleChatMode() {
