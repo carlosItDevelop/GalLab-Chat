@@ -21,95 +21,146 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     
     <style>
+        :root {
+            --vz-sidebar-bg: #25293c;
+            --vz-sidebar-item-color: #a6b0cf;
+            --vz-sidebar-item-hover-bg: #2a2f42;
+            --vz-sidebar-item-active-bg: #3577f0;
+            --vz-sidebar-item-active-color: #fff;
+            --vz-chat-bg: #32394e;
+            --vz-chat-message-bg: #3a4056;
+            --vz-border-color: #32394e;
+            --vz-body-bg: #212529;
+            --vz-success: #0ab39c;
+            --vz-primary: #3577f0;
+        }
+
         body {
-            background-color: #f3f6f9;
+            background-color: var(--vz-body-bg);
             font-family: 'Inter', sans-serif;
+            color: #fff;
         }
         
         .chat-wrapper {
             height: 100vh;
-            background-color: #fff;
-            border-radius: 0.75rem;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            background-color: var(--vz-sidebar-bg);
+            border-radius: 0;
+            margin: -12px;
         }
         
         .chat-leftsidebar {
-            width: 320px;
-            border-right: 1px solid #e9ecef;
-            background-color: #fff;
-            border-top-left-radius: 0.75rem;
-            border-bottom-left-radius: 0.75rem;
+            width: 280px;
+            border-right: 1px solid var(--vz-border-color);
+            background-color: var(--vz-sidebar-bg);
+            height: 100vh;
         }
         
         .user-chat {
-            background-color: #fff;
-            border-top-right-radius: 0.75rem;
-            border-bottom-right-radius: 0.75rem;
+            background-color: var(--vz-chat-bg);
+            height: 100vh;
         }
         
         .chat-conversation {
-            height: calc(100vh - 200px);
+            height: calc(100vh - 180px);
             overflow-y: auto;
-            background: #f8f9fa;
+            background: var(--vz-chat-bg);
+            padding: 1.5rem;
         }
         
         .chat-input-section {
-            border-top: 1px solid #e9ecef;
-            background-color: #fff;
+            border-top: 1px solid var(--vz-border-color);
+            background-color: var(--vz-chat-bg);
+            padding: 1rem 1.5rem;
         }
         
         .chat-user-list li {
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f1f3f4;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
             cursor: pointer;
             transition: all 0.3s ease;
+            color: var(--vz-sidebar-item-color);
         }
         
         .chat-user-list li:hover {
-            background-color: #f8f9fa;
+            background-color: var(--vz-sidebar-item-hover-bg);
         }
         
         .chat-user-list li.active {
-            background-color: #e7f3ff;
-            border-left: 3px solid #007bff;
+            background-color: var(--vz-sidebar-item-active-bg);
+            color: var(--vz-sidebar-item-active-color);
         }
         
         .message {
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: flex-start;
         }
         
         .message.sent {
-            text-align: right;
+            flex-direction: row-reverse;
         }
         
         .message.received {
-            text-align: left;
+            flex-direction: row;
+        }
+        
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin: 0 10px;
+            background: linear-gradient(45deg, #3577f0, #0ab39c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        
+        .message-content-wrapper {
+            max-width: 65%;
         }
         
         .message-content {
-            display: inline-block;
-            max-width: 70%;
             padding: 0.75rem 1rem;
             border-radius: 1rem;
             position: relative;
+            word-wrap: break-word;
         }
         
         .message.sent .message-content {
-            background-color: #007bff;
+            background-color: var(--vz-primary);
             color: white;
             border-bottom-right-radius: 0.25rem;
         }
         
         .message.received .message-content {
-            background-color: #e9ecef;
-            color: #495057;
+            background-color: var(--vz-chat-message-bg);
+            color: #a6b0cf;
             border-bottom-left-radius: 0.25rem;
         }
         
         .message-time {
-            font-size: 0.75rem;
+            font-size: 0.6875rem;
             color: #6c757d;
             margin-top: 0.25rem;
+            margin-left: 0.5rem;
+        }
+        
+        .message.sent .message-time {
+            text-align: right;
+            margin-right: 0.5rem;
+            margin-left: 0;
+        }
+        
+        .message-sender {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--vz-primary);
+            margin-bottom: 0.25rem;
+            margin-left: 0.5rem;
         }
         
         .user-status {
@@ -117,27 +168,39 @@
             height: 8px;
             border-radius: 50%;
             position: absolute;
-            bottom: 0;
-            right: 0;
-            border: 2px solid #fff;
-        }
-        
-        .user-status.online {
-            background-color: #28a745;
+            bottom: 2px;
+            right: 2px;
+            border: 2px solid var(--vz-sidebar-bg);
+            background-color: var(--vz-success);
         }
         
         .avatar-xs {
             width: 2rem;
             height: 2rem;
-        }
-        
-        .avatar-sm {
-            width: 2.5rem;
-            height: 2.5rem;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #3577f0, #0ab39c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            position: relative;
         }
         
         .search-box {
             position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .search-box input {
+            background-color: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            color: #a6b0cf !important;
+            padding-right: 2.5rem;
+        }
+        
+        .search-box input::placeholder {
+            color: #6c757d;
         }
         
         .search-box .search-icon {
@@ -149,38 +212,37 @@
         }
         
         .nav-tabs-custom {
-            border-bottom: 1px solid #e9ecef;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background-color: var(--vz-sidebar-bg);
         }
         
         .nav-tabs-custom .nav-link {
             border: none;
-            color: #6c757d;
+            color: var(--vz-sidebar-item-color);
             font-weight: 500;
+            background: transparent;
         }
         
         .nav-tabs-custom .nav-link.active {
-            color: #28a745;
-            border-bottom: 2px solid #28a745;
+            color: var(--vz-primary);
+            border-bottom: 2px solid var(--vz-primary);
+            background: transparent;
         }
         
-        .public-chat-indicator {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            text-align: center;
-            font-weight: 500;
+        .chat-topbar {
+            background-color: var(--vz-chat-bg);
+            border-bottom: 1px solid var(--vz-border-color);
+            padding: 1rem 1.5rem;
         }
         
-        .private-chat-indicator {
-            background: linear-gradient(45deg, #007bff, #6610f2);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            text-align: center;
-            font-weight: 500;
+        .chat-topbar h5 {
+            color: #fff;
+            margin: 0;
+        }
+        
+        .chat-topbar .text-muted {
+            color: #a6b0cf !important;
+            font-size: 0.8125rem;
         }
         
         #loginSection {
@@ -200,7 +262,8 @@
         }
         
         .system-message {
-            margin: 0.5rem 0;
+            margin: 1rem 0;
+            text-align: center;
         }
         
         .system-message-content {
@@ -209,10 +272,106 @@
             padding: 0.25rem 0.75rem;
             border-radius: 1rem;
             border: 1px solid rgba(108, 117, 125, 0.2);
+            font-size: 0.75rem;
+            color: #6c757d;
         }
         
         .toast-container {
             z-index: 9999;
+        }
+        
+        .chat-leftsidebar .p-4 {
+            padding: 1.5rem 1rem !important;
+        }
+        
+        .sidebar-header {
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sidebar-header .btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #a6b0cf;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-header .btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        
+        .section-title {
+            color: #6c757d;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin: 1rem 0 0.5rem 0;
+            letter-spacing: 0.5px;
+        }
+        
+        .chat-input {
+            background-color: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            color: #a6b0cf !important;
+        }
+        
+        .chat-input::placeholder {
+            color: #6c757d;
+        }
+        
+        .chat-send {
+            background-color: var(--vz-primary) !important;
+            border-color: var(--vz-primary) !important;
+        }
+        
+        .btn-link {
+            color: #a6b0cf !important;
+        }
+        
+        .btn-link:hover {
+            color: #fff !important;
+        }
+        
+        .online-badge {
+            background-color: var(--vz-success) !important;
+            font-size: 0.6875rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Scrollbar customization */
+        .chat-conversation::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-conversation::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .chat-conversation::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        
+        .chat-conversation::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Avatar generator styles */
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
         }
     </style>
 </head>
@@ -234,152 +393,124 @@
 
     <!-- Chat Section -->
     <div id="chatSection" style="display: none;">
-        <div class="container-fluid p-3">
-            <div class="chat-wrapper d-lg-flex gap-1">
-                <!-- Left Sidebar -->
-                <div class="chat-leftsidebar">
-                    <div class="px-4 pt-4 mb-4">
-                        <div class="d-flex align-items-start">
-                            <div class="flex-grow-1">
-                                <h5 class="mb-4">💬 Chat Moderno</h5>
-                            </div>
-                            <div class="flex-shrink-0">
-                                <button type="button" class="btn btn-soft-success btn-sm" onclick="toggleChatMode()">
-                                    <i class="ri-group-line align-bottom"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="search-box">
-                            <input type="text" class="form-control bg-light border-light" placeholder="Buscar usuários..." id="searchUsers">
-                            <i class="ri-search-2-line search-icon"></i>
+        <div class="chat-wrapper d-lg-flex">
+            <!-- Left Sidebar -->
+            <div class="chat-leftsidebar">
+                <div class="p-4">
+                    <div class="sidebar-header">
+                        <h5>Chats</h5>
+                        <button type="button" class="btn" onclick="toggleChatMode()">
+                            <i class="ri-add-line"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="search-box">
+                        <input type="text" class="form-control" placeholder="Buscar..." id="searchUsers">
+                        <i class="ri-search-2-line search-icon"></i>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs nav-tabs-custom nav-justified" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#chats" role="tab">
+                            Chats
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#contacts" role="tab">
+                            Contatos
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane active" id="chats" role="tabpanel">
+                        <div class="px-3">
+                            <div class="section-title">MENSAGENS DIRETAS</div>
+                            <ul class="list-unstyled chat-user-list" id="userList">
+                                <li onclick="selectPublicChat()" class="active">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="avatar-xs">
+                                                <i class="ri-group-line"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 fs-14">Geral</h6>
+                                            <p class="text-muted mb-0 fs-12">Chat público</p>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
                         </div>
                     </div>
-
-                    <ul class="nav nav-tabs nav-tabs-custom nav-success nav-justified" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#chats" role="tab">
-                                Conversas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#contacts" role="tab">
-                                Usuários Online
-                            </a>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content text-muted">
-                        <div class="tab-pane active" id="chats" role="tabpanel">
-                            <div class="chat-room-list pt-3">
-                                <div class="d-flex align-items-center px-4 mb-2">
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-0 fs-12 text-muted text-uppercase">Conversas Diretas</h6>
-                                    </div>
-                                </div>
-                                <div class="chat-message-list">
-                                    <ul class="list-unstyled chat-list chat-user-list" id="userList">
-                                        <li onclick="selectPublicChat()" class="active">
-                                            <div class="d-flex align-items-center">
-                                                <div class="flex-shrink-0 chat-user-img me-3">
-                                                    <div class="avatar-xs">
-                                                        <span class="avatar-title rounded-circle bg-success text-white">
-                                                            <i class="ri-group-line"></i>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div class="flex-grow-1 overflow-hidden">
-                                                    <h5 class="text-truncate mb-0 fs-14">Chat Público</h5>
-                                                    <p class="chat-user-message text-truncate mb-0">Conversa geral</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="contacts" role="tabpanel">
-                            <div class="chat-room-list pt-3">
-                                <div class="sort-contact" id="onlineUsersList">
-                                    <!-- Online users will be populated here -->
-                                </div>
+                    
+                    <div class="tab-pane" id="contacts" role="tabpanel">
+                        <div class="px-3">
+                            <div class="section-title">USUÁRIOS ONLINE</div>
+                            <div id="onlineUsersList">
+                                <!-- Online users will be populated here -->
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Main Chat Area -->
-                <div class="user-chat w-100 overflow-hidden">
-                    <div class="chat-content d-lg-flex">
-                        <div class="w-100 overflow-hidden position-relative">
-                            <!-- Chat Header -->
-                            <div class="p-3 user-chat-topbar border-bottom">
-                                <div class="row align-items-center">
-                                    <div class="col-sm-4 col-8">
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1 overflow-hidden">
-                                                <div class="d-flex align-items-center">
-                                                    <div class="flex-shrink-0 chat-user-img me-3">
-                                                        <div class="avatar-xs">
-                                                            <span class="avatar-title rounded-circle bg-primary text-white" id="chatHeaderIcon">
-                                                                <i class="ri-group-line"></i>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex-grow-1 overflow-hidden">
-                                                        <h5 class="text-truncate mb-0 fs-16" id="chatHeaderTitle">Chat Público</h5>
-                                                        <p class="text-truncate text-muted mb-0" id="chatHeaderStatus">Conversa geral</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-8 col-4">
-                                        <ul class="list-inline user-chat-nav text-end mb-0">
-                                            <li class="list-inline-item m-0">
-                                                <span class="badge bg-success" id="onlineCount">0 online</span>
-                                            </li>
-                                        </ul>
+            <!-- Main Chat Area -->
+            <div class="user-chat w-100">
+                <!-- Chat Header -->
+                <div class="chat-topbar">
+                    <div class="row align-items-center">
+                        <div class="col-sm-4 col-8">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="avatar-xs" id="chatHeaderAvatar">
+                                        <i class="ri-group-line"></i>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Chat Messages -->
-                            <div class="chat-conversation p-3" id="chatMessages">
-                                <div id="currentChatIndicator" class="public-chat-indicator">
-                                    <i class="ri-group-line me-2"></i>Chat Público - Suas mensagens serão vistas por todos
+                                <div class="flex-grow-1">
+                                    <h5 id="chatHeaderTitle">Geral</h5>
+                                    <p class="text-muted mb-0 fs-13" id="chatHeaderStatus">Chat público</p>
                                 </div>
-                                <ul class="list-unstyled chat-conversation-list" id="messagesList">
-                                    <!-- Messages will be populated here -->
-                                </ul>
-                            </div>
-
-                            <!-- Chat Input -->
-                            <div class="chat-input-section p-3">
-                                <form id="messageForm">
-                                    <div class="row g-0 align-items-center">
-                                        <div class="col-auto">
-                                            <div class="chat-input-links me-2">
-                                                <button type="button" class="btn btn-link text-decoration-none" onclick="addEmoji()">
-                                                    <i class="bx bx-smile align-middle"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="col">
-                                            <input type="text" class="form-control chat-input bg-light border-light" 
-                                                   id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="500">
-                                        </div>
-                                        <div class="col-auto">
-                                            <div class="chat-input-links ms-2">
-                                                <button type="submit" class="btn btn-success chat-send">
-                                                    <i class="ri-send-plane-2-fill align-bottom"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
                             </div>
                         </div>
+                        <div class="col-sm-8 col-4">
+                            <ul class="list-inline text-end mb-0">
+                                <li class="list-inline-item">
+                                    <span class="badge online-badge" id="onlineCount">0 online</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="chat-conversation">
+                    <ul class="list-unstyled mb-0" id="messagesList">
+                        <!-- Messages will be populated here -->
+                    </ul>
+                </div>
+
+                <!-- Chat Input -->
+                <div class="chat-input-section">
+                    <form id="messageForm">
+                        <div class="row g-0 align-items-center">
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-link" onclick="addEmoji()">
+                                    <i class="bx bx-smile"></i>
+                                </button>
+                            </div>
+                            <div class="col">
+                                <input type="text" class="form-control chat-input" 
+                                       id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="500">
+                            </div>
+                            <div class="col-auto">
+                                <button type="submit" class="btn btn-primary chat-send ms-2">
+                                    <i class="ri-send-plane-2-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -395,6 +526,29 @@
         let currentUser = '';
         let currentChat = 'public';
         let selectedUser = null;
+
+        // User avatars mapping
+        const userAvatars = {};
+
+        // Generate avatar for user
+        function generateAvatar(username) {
+            if (!userAvatars[username]) {
+                const colors = [
+                    'linear-gradient(45deg, #3577f0, #0ab39c)',
+                    'linear-gradient(45deg, #f06548, #ffc107)',
+                    'linear-gradient(45deg, #6f42c1, #e83e8c)',
+                    'linear-gradient(45deg, #20c997, #198754)',
+                    'linear-gradient(45deg, #fd7e14, #dc3545)',
+                    'linear-gradient(45deg, #0dcaf0, #6610f2)'
+                ];
+                const colorIndex = username.charCodeAt(0) % colors.length;
+                userAvatars[username] = {
+                    color: colors[colorIndex],
+                    initial: username.charAt(0).toUpperCase()
+                };
+            }
+            return userAvatars[username];
+        }
 
         // Initialize SignalR connection
         async function startConnection() {
@@ -493,14 +647,20 @@
 
             const messagesList = document.getElementById('messagesList');
             const isCurrentUser = userName === currentUser || isSent;
+            const avatar = generateAvatar(userName);
             
             const messageElement = document.createElement('li');
             messageElement.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
             
             messageElement.innerHTML = `
-                <div class="message-content">
-                    ${!isCurrentUser ? `<div class="fw-bold mb-1">${userName}</div>` : ''}
-                    <div>${escapeHtml(message)}</div>
+                <div class="message-avatar" style="background: ${avatar.color}">
+                    ${avatar.initial}
+                </div>
+                <div class="message-content-wrapper">
+                    ${!isCurrentUser ? `<div class="message-sender">${userName}</div>` : ''}
+                    <div class="message-content">
+                        ${escapeHtml(message)}
+                    </div>
                     <div class="message-time">${time}</div>
                 </div>
             `;
@@ -511,18 +671,16 @@
 
         // Add system message (for join/leave notifications)
         function addSystemMessage(message) {
-            if (currentChat !== 'public') return; // Only show in public chat
+            if (currentChat !== 'public') return;
             
             const messagesList = document.getElementById('messagesList');
             const messageElement = document.createElement('li');
-            messageElement.className = 'system-message text-center my-2';
+            messageElement.className = 'system-message';
             
             messageElement.innerHTML = `
                 <div class="system-message-content">
-                    <small class="text-muted">
-                        <i class="ri-information-line me-1"></i>
-                        ${escapeHtml(message)}
-                    </small>
+                    <i class="ri-information-line me-1"></i>
+                    ${escapeHtml(message)}
                 </div>
             `;
             
@@ -545,22 +703,22 @@
 
             users.forEach(user => {
                 if (user !== currentUser) {
+                    const avatar = generateAvatar(user);
+                    
                     // Add to chat list
                     const userItem = document.createElement('li');
                     userItem.onclick = () => selectPrivateChat(user);
                     userItem.innerHTML = `
                         <div class="d-flex align-items-center">
-                            <div class="flex-shrink-0 chat-user-img me-3">
-                                <div class="avatar-xs">
-                                    <span class="avatar-title rounded-circle bg-info text-white">
-                                        ${user.charAt(0).toUpperCase()}
-                                    </span>
-                                    <span class="user-status online"></span>
+                            <div class="flex-shrink-0 me-3">
+                                <div class="avatar-xs" style="background: ${avatar.color}">
+                                    ${avatar.initial}
+                                    <span class="user-status"></span>
                                 </div>
                             </div>
-                            <div class="flex-grow-1 overflow-hidden">
-                                <h5 class="text-truncate mb-0 fs-14">${user}</h5>
-                                <p class="chat-user-message text-truncate mb-0">Online</p>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fs-14">${user}</h6>
+                                <p class="text-muted mb-0 fs-12">Online</p>
                             </div>
                         </div>
                     `;
@@ -568,20 +726,18 @@
 
                     // Add to online users tab
                     const onlineUserItem = document.createElement('div');
-                    onlineUserItem.className = 'px-4 py-2 border-bottom';
+                    onlineUserItem.className = 'py-2 border-bottom';
                     onlineUserItem.onclick = () => selectPrivateChat(user);
                     onlineUserItem.style.cursor = 'pointer';
                     onlineUserItem.innerHTML = `
                         <div class="d-flex align-items-center">
                             <div class="flex-shrink-0 me-3">
-                                <div class="avatar-xs">
-                                    <span class="avatar-title rounded-circle bg-success text-white">
-                                        ${user.charAt(0).toUpperCase()}
-                                    </span>
+                                <div class="avatar-xs" style="background: ${avatar.color}">
+                                    ${avatar.initial}
                                 </div>
                             </div>
                             <div class="flex-grow-1">
-                                <h6 class="mb-0">${user}</h6>
+                                <h6 class="mb-0 fs-14 text-light">${user}</h6>
                                 <p class="text-muted mb-0 fs-12">Online</p>
                             </div>
                         </div>
@@ -597,11 +753,10 @@
             selectedUser = null;
             
             // Update UI
-            document.getElementById('chatHeaderTitle').textContent = 'Chat Público';
-            document.getElementById('chatHeaderStatus').textContent = 'Conversa geral';
-            document.getElementById('chatHeaderIcon').innerHTML = '<i class="ri-group-line"></i>';
-            document.getElementById('currentChatIndicator').className = 'public-chat-indicator';
-            document.getElementById('currentChatIndicator').innerHTML = '<i class="ri-group-line me-2"></i>Chat Público - Suas mensagens serão vistas por todos';
+            document.getElementById('chatHeaderTitle').textContent = 'Geral';
+            document.getElementById('chatHeaderStatus').textContent = 'Chat público';
+            document.getElementById('chatHeaderAvatar').innerHTML = '<i class="ri-group-line"></i>';
+            document.getElementById('chatHeaderAvatar').style.background = 'linear-gradient(45deg, #3577f0, #0ab39c)';
             
             // Clear messages and update active state
             clearMessages();
@@ -612,13 +767,13 @@
         function selectPrivateChat(userName) {
             currentChat = 'private';
             selectedUser = userName;
+            const avatar = generateAvatar(userName);
             
             // Update UI
             document.getElementById('chatHeaderTitle').textContent = userName;
-            document.getElementById('chatHeaderStatus').textContent = 'Conversa privada';
-            document.getElementById('chatHeaderIcon').innerHTML = userName.charAt(0).toUpperCase();
-            document.getElementById('currentChatIndicator').className = 'private-chat-indicator';
-            document.getElementById('currentChatIndicator').innerHTML = `<i class="ri-user-line me-2"></i>Conversa Privada com ${userName}`;
+            document.getElementById('chatHeaderStatus').textContent = 'Online';
+            document.getElementById('chatHeaderAvatar').innerHTML = avatar.initial;
+            document.getElementById('chatHeaderAvatar').style.background = avatar.color;
             
             // Clear messages and update active state
             clearMessages();
@@ -630,7 +785,7 @@
             const userListItems = document.querySelectorAll('#userList li');
             userListItems.forEach(item => {
                 item.classList.remove('active');
-                if ((chatId === 'public' && item.textContent.includes('Chat Público')) ||
+                if ((chatId === 'public' && item.textContent.includes('Geral')) ||
                     (chatId !== 'public' && item.textContent.includes(chatId))) {
                     item.classList.add('active');
                 }
@@ -654,49 +809,7 @@
 
         // Show notification
         function showNotification(message, type = 'info') {
-            // Create toast notification
-            const toastContainer = document.getElementById('toastContainer') || createToastContainer();
-            
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : 'success'} border-0`;
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="ri-${type === 'error' ? 'error-warning' : 'notification'}-line me-2"></i>
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // Initialize and show toast
-            const bsToast = new bootstrap.Toast(toast, {
-                autohide: true,
-                delay: 3000
-            });
-            bsToast.show();
-            
-            // Remove toast after it's hidden
-            toast.addEventListener('hidden.bs.toast', () => {
-                toast.remove();
-            });
-            
             console.log(`${type}: ${message}`);
-        }
-
-        function createToastContainer() {
-            const container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '9999';
-            document.body.appendChild(container);
-            return container;
         }
 
         // Utility functions
@@ -707,7 +820,7 @@
         }
 
         function scrollToBottom() {
-            const chatMessages = document.getElementById('chatMessages');
+            const chatMessages = document.getElementById('chatMessages') || document.querySelector('.chat-conversation');
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
